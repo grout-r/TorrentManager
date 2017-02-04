@@ -1,12 +1,16 @@
 import requests
 import json
 import sys
+import userRequest
+import tempfile
+import os
 
 username = "LeRockeur43"
 password = "acdcacdc"
 token = ""
 domain = "http://api.t411.li"
 header = {}
+
 
 class color:
     HEADER = '\033[95m'
@@ -18,28 +22,25 @@ class color:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 def login():
     global token
     global header
     r = requests.post(domain + "/auth", data={'username': username, 'password': password})
     token = r.json()["token"]
-    header = {"Authorization" : token}
-
-def askRequest():
-    req = {}
-
-    print("What is your keyword ?")
-    sys.stdout.write("$>")
-    sys.stdout.flush()
-    req["keyword"] = sys.stdin.readline();
-    return req
+    header = {"Authorization": token}
 
 def printTorrents(json):
-    template = "| {0:8} | {1:125} | {2:10} | {3:10} | {4:10} | {5:10} Go | {6:20} |"
+    template = "{0:4} | {1:8} | {2:125} | {3:10} | {4:10} | {5:10} | {6:10} Go | {7:20} | {8:20}"
+    i = 0
+
     print(json["torrents"][0])
-    print(color.WARNING + template.format("UID", "NAME", "COMPLETED", "SEEDERS", "LEECHERS", "SIZE", "ADDED") + color.ENDC)
+    print(color.WARNING + template.format("NUM", "UID", "NAME", "COMPLETED", "SEEDERS", "LEECHERS", "SIZE","ADDED", "TYPE") + color.ENDC)
+
     for item in json["torrents"]:
-        print(template.format(item['id'], item['name'], item["times_completed"], item['seeders'], item['leechers'], round(float(item["size"])/1073741824, 2), item["added"] ) )
+        print(template.format(str(i), item['id'], item['name'], item["times_completed"], item['seeders'], item['leechers'], round(float(item["size"]) / 1073741824, 2), item["added"], item["categoryname"]))
+        i += 1
+
 
 def getOnlyRes(json, res):
     retval = json.copy()
@@ -50,12 +51,26 @@ def getOnlyRes(json, res):
             retval["torrents"].append(item)
     return retval
 
+def perfomRequest(req):
+    r = requests.get(domain + "/torrents/search/" + req["keyword"] + "?limit=50", headers=header).json()
+    return r
+
+def addTorrent(json, tlist):
+    torrent = json["torrents"][tlist]
+    torrentbyte = requests.get(domain + "/torrents/download/" + torrent["id"], headers=header)
+    print(torrentbyte.content)
+    with open(os.getenv("TEMP")+ torrent["id"] + ".torrent", "wb") as tfile:
+        tfile.write(torrentbyte.content)
+
+
 def main():
     login()
-    req = askRequest()
-    r = requests.get(domain + "/torrents/search/" + req["keyword"]+ "?limit=15", headers=header).json()
-    print(r)
-    r2 = getOnlyRes(r, "720")
-    printTorrents(r2)
+    req = userRequest.askRequest()
+    r = perfomRequest(req)
+    r = getOnlyRes(r, req["resolution"])
+    printTorrents(r)
+    tlist = userRequest.choose()
+    addTorrent(r, tlist)
+
 
 main()
