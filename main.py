@@ -58,10 +58,12 @@ def perfomRequest(req):
 def addTorrent(json, tlist):
     torrent = json["torrents"][tlist]
     torrentbyte = requests.get(domain + "/torrents/download/" + torrent["id"], headers=header)
-    print(torrentbyte.content)
-    with open(os.getenv("TEMP")+ torrent["id"] + ".torrent", "wb") as tfile:
+    path = os.getenv("TEMP")+ "\\" + torrent["id"] + ".torrent"
+    with open(path, "wb") as tfile:
         tfile.write(torrentbyte.content)
-
+    print(path)
+    os.system("start "+ path)
+#    os.execl("C:\Program Files (x86)\Deluge\deluge-console.exe", "add", path)
 
 def main():
     login()
